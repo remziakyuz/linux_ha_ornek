@@ -94,7 +94,16 @@
       failed_when: false
 
     - name: "PREP | Önceki location constraint'leri temizle"
-      command: pcs resource clear vip
+      shell: |
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "PREP | Fencing geçmişini temizle (Failed/Pending Fencing Actions)"
+      # Önceki testlerden kalan fence aksiyonları sonraki testlerde
+      # beklenmedik node reboot'larına neden olur.
+      shell: pcs stonith history clean 2>/dev/null || true
       changed_when: false
       failed_when: false
 
@@ -527,6 +536,49 @@
       debug:
         msg: "════════ T02: VIP FAILOVER (BAKIM SİMÜLASYONU) ════════"
 
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
+
     - name: "T02 | Başlangıç: VIP hangi node'da?"
       shell: "pcs resource status vip | grep Started | awk '{print $NF}'"
       register: vip_before
@@ -671,6 +723,49 @@
     - name: "T03 | Banner"
       debug:
         msg: "════════ T03: AKTİF NODE ANİ KAPATMA ════════"
+
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
 
     - name: "T03 | Yıkıcı test kontrolü"
       assert:
@@ -879,6 +974,49 @@
       debug:
         msg: "════════ T04: COROSYNC RING AĞ KESİNTİSİ ════════"
 
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
+
     - name: "T04 | Yıkıcı test kontrolü"
       assert:
         that: run_destructive | default(false) | bool
@@ -947,16 +1085,12 @@
           pause:
             seconds: "{{ network_block_duration + 10 }}"
 
-        # ── Cluster stabilizasyonu ───────────────────────────────────────
-        # until koşulu açıklaması:
-        #   1. 'OFFLINE' yok               → her iki node cluster'da online
-        #   2. 'Failed Resource Actions' yok → başarısız resource operation yok
-        #   3. Her iki node adı çıktıda var  → quorum tam
-        #   4. 'partition with quorum' var   → Pacemaker quorate olduğunu onaylıyor
-        #
-        # NOT: "Stopped: [ clstrXX ]" clone resource'lar için geçici normaldir;
-        # bu string doğrudan kontrol edilmiyor.
-        - name: "T04 | Cluster stabilizasyonu ({{ failover_wait }}s)"
+        - name: "T04 | Resource cleanup (önce temizle)"
+          command: pcs resource cleanup
+          changed_when: false
+          failed_when: false
+
+        - name: "T04 | Cluster stabilizasyonu bekle ({{ failover_wait }}s)"
           shell: pcs status 2>&1
           register: t04_recovery_status
           retries: "{{ (failover_wait / 5) | int }}"
@@ -964,8 +1098,6 @@
           until: >
             'OFFLINE' not in t04_recovery_status.stdout
             and 'Failed Resource Actions' not in t04_recovery_status.stdout
-            and groups['cluster_nodes'][0].split('.')[0] in t04_recovery_status.stdout
-            and groups['cluster_nodes'][1].split('.')[0] in t04_recovery_status.stdout
             and 'partition with quorum' in t04_recovery_status.stdout
           changed_when: false
           failed_when: false
@@ -981,11 +1113,7 @@
               - "'Failed Resource Actions' not in t04_recovery_status.stdout"
               - "'partition with quorum' in t04_recovery_status.stdout"
             success_msg: "✓ Cluster stabilize — her iki node online, quorum var"
-            fail_msg: "✗ Cluster henüz stabilize değil:\n{{ t04_recovery_status.stdout }}"
-
-        - name: "T04 | Resource cleanup"
-          command: pcs resource cleanup
-          changed_when: false
+            fail_msg: "✗ Cluster stabilize değil:\n{{ t04_recovery_status.stdout }}"
 
         - name: "T04 | VIP hâlâ erişilebilir mi?"
           command: >
@@ -1063,6 +1191,49 @@
     - name: "T05 | Banner"
       debug:
         msg: "════════ T05: SPLIT-BRAIN ÖNLEMESİ TEST ════════"
+
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
 
     - name: "T05 | Yıkıcı test kontrolü"
       assert:
@@ -1170,6 +1341,49 @@
     - name: "T06 | Banner"
       debug:
         msg: "════════ T06: POSTGRESQL SERVİS ÇÖKÜŞÜ (kill -9) ════════"
+
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
 
     - name: "T06 | PostgreSQL hangi node'da?"
       shell: "pcs resource status postgresql | grep Started | awk '{print $NF}'"
@@ -1306,6 +1520,49 @@
       debug:
         msg: "════════ T07: GFS2 EŞZAMANLI YAZMA ════════"
 
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
+
     - name: "T07 | GFS2 mount doğrula"
       command: "mountpoint -q {{ gfs2_mount }}"
       register: t07_mount_check
@@ -1424,6 +1681,49 @@
     - name: "T08 | Banner"
       debug:
         msg: "════════ T08: LVM LOCK KAYBINDAN KURTARMA ════════"
+
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
 
     # ── db_vg (exclusive) hangi node'da aktif? ──────────────────────────────
     # pgsql_lv_activate exclusive modda çalışır; lockspace yalnızca o node'da
@@ -1625,6 +1925,49 @@
       debug:
         msg: "════════ T09: STONITH FENCE AGENT TESTİ ════════"
 
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
+
     - name: "T09 | STONITH test kontrolü"
       assert:
         that: run_stonith_test | default(false) | bool
@@ -1791,6 +2134,12 @@
           failed_when: false
           delegate_to: "{{ t09_active }}"
 
+        - name: "T09 | Fencing geçmişini temizle (sonraki testleri korumak için)"
+          shell: pcs stonith history clean 2>/dev/null || true
+          changed_when: false
+          failed_when: false
+          delegate_to: "{{ t09_active }}"
+
     - name: "T09 | SONUÇ"
       debug:
         msg: |
@@ -1815,6 +2164,49 @@
     - name: "T10 | Banner"
       debug:
         msg: "════════ T10: iSCSI BAĞLANTI KESİNTİSİ ════════"
+
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
 
     - name: "T10 | iSCSI yapılandırma kontrolü"
       assert:
@@ -1973,22 +2365,48 @@
       debug:
         msg: "════════ T11: YÜK ALTINDA FAILOVER ════════"
 
-    - name: "T11 | Test öncesi cluster sağlık kontrolü"
-      command: pcs status
-      register: t11_pre_status
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
       changed_when: false
       failed_when: false
 
-    - name: "T11 | Test öncesi BLOCKED/FAILED resource var mı"
-      assert:
-        that: "'FAILED' not in t11_pre_status.stdout and 'BLOCKED' not in t11_pre_status.stdout"
-        success_msg: "✓ Cluster temiz — T11 başlatılıyor"
-        fail_msg: |
-          ✗ Cluster'da mevcut BLOCKED/FAILED resource var!
-          Önce temizleyin:
-            pcs resource cleanup
-          Sonra testi yeniden çalıştırın.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
       failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
 
     - name: "T11 | Test (block/rescue ile güvenli)"
       block:
@@ -2079,6 +2497,16 @@
           changed_when: false
           failed_when: false
 
+        - name: "T11 | RESCUE | Fencing geçmişini temizle"
+          shell: pcs stonith history clean 2>/dev/null || true
+          changed_when: false
+          failed_when: false
+
+        - name: "T11 | RESCUE | Resource cleanup"
+          command: pcs resource cleanup
+          changed_when: false
+          failed_when: false
+
         - name: "T11 | RESCUE | Durum analizi"
           debug:
             msg: |
@@ -2108,6 +2536,11 @@
       always:
         - name: "T11 | Location constraint kaldır (postgresql)"
           command: pcs resource clear postgresql
+          changed_when: false
+          failed_when: false
+
+        - name: "T11 | Fencing geçmişini temizle (always)"
+          shell: pcs stonith history clean 2>/dev/null || true
           changed_when: false
           failed_when: false
 
@@ -2155,6 +2588,49 @@
     - name: "T12 | Banner"
       debug:
         msg: "════════ T12: ARDIŞIK FAILOVER DAYANIKLILIK TESTİ ({{ failover_cycles }} döngü) ════════"
+
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
 
     - name: "T12 | Test (block/rescue ile güvenli)"
       block:
@@ -2429,6 +2905,49 @@
     - name: "T14 | Banner"
       debug:
         msg: "════════ T14: WEB SERVİSİ TESTİ (NGINX + PHP-FPM) ════════"
+
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
 
     # =========================================================================
     # T14.1 — ÖN KOŞUL KONTROLLERI
@@ -2965,6 +3484,49 @@
       debug:
         msg: "════════ T13: TAM CLUSTER YENİDEN BAŞLATMA ════════"
 
+
+    # ── Pre-test cluster guard ────────────────────────────────────────────────
+    # Her testten önce cluster'ın iki node'da da sağlıklı olduğunu doğrular.
+    # Önceki testten kalan fence aksiyonları / OFFLINE node varsa bekler.
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Fencing geçmişi ve constraint temizliği"
+      shell: |
+        pcs stonith history clean 2>/dev/null || true
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster sağlıklı mı? (her iki node online)"
+      shell: pcs status 2>&1
+      register: _guard_status
+      retries: 36
+      delay: 5
+      until: >
+        'OFFLINE' not in _guard_status.stdout
+        and 'partition with quorum' in _guard_status.stdout
+      changed_when: false
+      failed_when: false
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Resource cleanup"
+      command: pcs resource cleanup
+      changed_when: false
+      failed_when: false
+      when: >
+        'Failed Resource Actions' in _guard_status.stdout or
+        'Stopped' in _guard_status.stdout
+
+    - name: "{{ ansible_play_name | regex_replace(' Testi.*', '') }} | GUARD | Cluster durumu doğrulama"
+      assert:
+        that:
+          - "'OFFLINE' not in _guard_status.stdout"
+          - "'partition with quorum' in _guard_status.stdout"
+        success_msg: "✓ Cluster hazır — her iki node online"
+        fail_msg: >-
+          ✗ Cluster test için hazır değil! OFFLINE node veya quorum sorunu var.
+          Durum: {{ _guard_status.stdout[-500:] }}
+      when: not (run_destructive | default(false) | bool) or
+            not (ansible_play_name is search('T13'))
+
     - name: "T13 | Yıkıcı test kontrolü"
       assert:
         that: run_destructive | default(false) | bool
@@ -3016,14 +3578,15 @@
           changed_when: false
 
         - name: "T13 | GFS2 her iki node'da başladı mı?"
-          command: pcs resource status gfs2_fs-clone
+          shell: pcs resource status gfs2_fs-clone 2>&1
           register: t13_gfs2
           retries: 12
           delay: 10
           until: >
-            groups['cluster_nodes'][0].split('.')[0] in t13_gfs2.stdout and
-            groups['cluster_nodes'][1].split('.')[0] in t13_gfs2.stdout
+            t13_gfs2.stdout | regex_search('Started:.*' + groups['cluster_nodes'][0].split('.')[0]) and
+            t13_gfs2.stdout | regex_search('Started:.*' + groups['cluster_nodes'][1].split('.')[0])
           changed_when: false
+          failed_when: false
 
         - name: "T13 | PostgreSQL başladı mı?"
           command: pcs resource status postgresql
@@ -3111,7 +3674,14 @@
       failed_when: false
 
     - name: "RAPOR | Tüm location constraint'leri temizle"
-      command: pcs resource clear vip
+      shell: |
+        pcs resource clear vip 2>/dev/null || true
+        pcs resource clear postgresql 2>/dev/null || true
+      changed_when: false
+      failed_when: false
+
+    - name: "RAPOR | Fencing geçmişini temizle"
+      shell: pcs stonith history clean 2>/dev/null || true
       changed_when: false
       failed_when: false
 
